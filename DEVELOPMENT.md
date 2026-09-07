@@ -121,7 +121,10 @@ $env:PYTHONIOENCODING="utf-8"
 - 文档级访问控制（`CheckIngestedDocumentAcl` / `GetIngestedDocumentAcl` /
   `userContext.userId`）在托管 KB 上的实际行为。
 - `memoryConfiguration` 把 AgentCore Memory 接进多跳检索的效果。
-- `FullDocumentExpansion` 这个 trace 步骤在什么条件下触发，本次 11 题都没见到。
+- `FullDocumentExpansion` 本次 11 题都没触发。按[官方文档](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-agentic-retrieve.html)
+  它在模型判断需要整篇文档时才出现（摘要、确认完整性、取特定章节），会调
+  `GetDocumentContent`。本仓库的题目都是精确事实查找，所以没触发是合理的；
+  想复现这一步得加摘要类问题，还要确保调用方有 `bedrock:GetDocumentContent` 权限。
 - 大语料（千篇量级）下三档的差距是否还是这个形状。小语料对纯向量检索是有利的。
 - 多跳内部检索轮次的方差来源。三次跑里 M2 出现过 `Retrieval x4` 和 `Retrieval x8`
   两种结果，其他题的轮次都稳定。报表里 `report()` 只统计实际产生了 row 的档位，

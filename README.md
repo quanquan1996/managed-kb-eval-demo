@@ -105,6 +105,10 @@ M4   SpeculativeRetrieval x2, Planning x4, Retrieval x4
 M5   SpeculativeRetrieval x2, Planning x2
 ```
 
+每题都有的 `SpeculativeRetrieval` 是规划之前先用原始查询检索一次，为的是降低延迟；
+`Planning` 是模型拆子问题、并判断结果够不够，不够才加轮次。各步骤的定义见
+[官方文档](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-agentic-retrieve.html)。
+
 需要跨文档拼答案的 M1、M2、M4 才额外触发了规划和检索轮次，单跳题一轮都没多花。
 
 **哪几题会升级，三次跑完全一致；升级几轮，则不一定。** M2 在前两次跑是
@@ -263,4 +267,17 @@ OpenSearch Serverless 最大的区别（后者仅集合本身就约 $0.24/OCU-�
 ## 想改脚本？
 
 代码结构、API 形状、以及踩过的坑清单见 **[DEVELOPMENT.md](DEVELOPMENT.md)**。
-评测过程的完整复盘见 **[blog/managed-kb-eval-zh.md](blog/managed-kb-eval-zh.md)**。
+
+**完整上手教程 + 评测复盘见 [blog/managed-kb-eval-zh.md](blog/managed-kb-eval-zh.md)** ——
+那篇从零讲到怎么换成你自己的数据，包含三档参数的可复制代码、IAM 权限、配额，
+比这份 README 详细得多。
+
+## 官方文档
+
+| 主题 | 链接 |
+|---|---|
+| 创建托管知识库（嵌入模型选项、支持的连接器） | [kb-managed-create](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-managed-create.html) |
+| 多跳检索（工作流程、trace 事件、IAM 权限） | [kb-test-agentic-retrieve](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-agentic-retrieve.html) |
+| 四个检索 API 的分工 | [kb-how-retrieval](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-how-retrieval.html) |
+| 托管知识库配额 | [kb-managed-quotas](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-managed-quotas.html) |
+| 作为 MCP 工具暴露给 Agent | [kb-gateway-target](https://docs.aws.amazon.com/bedrock/latest/userguide/kb-gateway-target.html) |
