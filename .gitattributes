@@ -1,0 +1,7 @@
+# Shell scripts must keep LF endings: CRLF breaks the shebang on Linux, which is
+# where these run (CloudShell).
+*.sh text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf

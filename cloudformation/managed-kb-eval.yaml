@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >-
+  Amazon Bedrock Managed Knowledge Base evaluation harness. Creates an S3 bucket
+  for the corpus, a MANAGED knowledge base (service-owned vector store) and a
+  managed-connector data source pointing at the bucket. Entirely native
+  CloudFormation resources: no Lambda, no custom resource, no staging bucket.
+  Document upload and index build are done by deploy.sh after the stack settles.
+
+Parameters:
+  EmbeddingModelType:
+    Type: String
+    Default: MANAGED
+    AllowedValues: [MANAGED, CUSTOM]
+    Description: >-
+      MANAGED lets Bedrock pick and operate the embedding model, which needs no
+      model access request. CUSTOM requires EmbeddingModelArn and disables the
+      managed reranker. This choice is permanent: switching later means
+      rebuilding the knowledge base.
+
+  EmbeddingModelArn:
+    Type: String
+    Default: ""
+    Description: >-
+      Only read when EmbeddingModelType is CUSTOM. Must be a 1024-dimension
+      float32 Bedrock embedding model, for example
+      arn:aws:bedrock:us-west-2::foundation-model/amazon.titan-embed-text-v2:0
+
+Conditions:
+  UseCustomEmbedding: !Equals [!Ref EmbeddingModelType, CUSTOM]
+
+Resources:
+  # ------------------------------------------------------------------- Corpus
+
+  CorpusBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CorpusBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CorpusBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::${CorpusBucket}
+              - !Sub arn:${AWS::Partition}:s3:::${CorpusBucket}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  # ------------------------------------------------- Managed Knowledge Base
+
+  KnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Lets the knowledge base read the corpus during ingestion
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+      Policies:
+        - PolicyName: read-corpus
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::${CorpusBucket}
+                  - !Sub arn:${AWS::Partition}:s3:::${CorpusBucket}/*
+              # Only needed when EmbeddingModelType is CUSTOM. Harmless
+              # otherwise: with MANAGED the service uses its own model, not
+              # this role.
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/*
+
+  # Type MANAGED means Bedrock owns the vector store, the index and the
+  # retrieval path. Nothing here is billed by the hour, which is the whole
+  # reason this demo costs almost nothing while idle.
+  KnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Sub
+        - managed-kb-eval-${Suffix}
+        - Suffix: !Select [4, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId]]]]
+      Description: Synthetic AnyCompany smart-meter support corpus for retrieval evaluation
+      RoleArn: !GetAtt KnowledgeBaseRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: MANAGED
+        ManagedKnowledgeBaseConfiguration:
+          EmbeddingModelType: !Ref EmbeddingModelType
+          EmbeddingModelArn: !If
+            - UseCustomEmbedding
+            - !Ref EmbeddingModelArn
+            - !Ref AWS::NoValue
+
+  # A MANAGED knowledge base rejects the classic "S3" data source type. The
+  # concrete connector is named inside ConnectorParameters instead. Note that
+  # every value in there must be a string: CloudFormation stringifies numbers
+  # in Json properties and the service then rejects the type.
+  CorpusDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      Name: corpus
+      Description: Synthetic Chinese support documents under the docs/ prefix
+      KnowledgeBaseId: !GetAtt KnowledgeBase.KnowledgeBaseId
+      DataDeletionPolicy: DELETE
+      DataSourceConfiguration:
+        Type: MANAGED_KNOWLEDGE_BASE_CONNECTOR
+        ManagedKnowledgeBaseConnectorConfiguration:
+          ConnectorParameters:
+            type: S3
+            version: "1"
+            connectionConfiguration:
+              bucketName: !Ref CorpusBucket
+              bucketOwnerAccountId: !Ref AWS::AccountId
+            filterConfiguration:
+              inclusionPrefixes:
+                - docs/
+
+Outputs:
+  CorpusBucketName:
+    Description: Upload your own documents under the docs/ prefix of this bucket
+    Value: !Ref CorpusBucket
+
+  KnowledgeBaseId:
+    Description: Pass this to Retrieve and AgenticRetrieveStream
+    Value: !GetAtt KnowledgeBase.KnowledgeBaseId
+
+  DataSourceId:
+    Description: Needed to start an ingestion job
+    Value: !GetAtt CorpusDataSource.DataSourceId
+
+  EmbeddingModelType:
+    Description: Echoed back so the eval report can record which model produced the vectors
+    Value: !Ref EmbeddingModelType

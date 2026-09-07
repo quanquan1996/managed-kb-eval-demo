@@ -1,0 +1,107 @@
+{
+  "_comment": "Ground truth for the retrieval evaluation. expected_docs lists every document that must be surfaced for the question to be answerable. expected_facts is a list of AND-ed requirements; each requirement is a list of OR-ed accepted spellings, matched as substrings after whitespace normalisation.",
+  "questions": [
+    {
+      "id": "S1",
+      "type": "single",
+      "question": "错误码 E207 是什么意思？",
+      "expected_docs": ["02-错误码手册.md"],
+      "expected_facts": [["零点漂移"]]
+    },
+    {
+      "id": "S2",
+      "type": "single",
+      "question": "计量芯片的保修期是几年？",
+      "expected_docs": ["03-保修政策.md"],
+      "expected_facts": [["5 年", "5年", "五年"]]
+    },
+    {
+      "id": "S3",
+      "type": "single",
+      "question": "发起 OTA 升级要求信号强度不低于多少 dBm？",
+      "expected_docs": ["05-OTA升级操作规程.md"],
+      "expected_facts": [["-95"]]
+    },
+    {
+      "id": "S4",
+      "type": "single",
+      "question": "华东区域整表更换的作业记录需要留存多少年？",
+      "expected_docs": ["04-区域合规与报备要求.md"],
+      "expected_facts": [["3 年", "3年", "三年"]]
+    },
+    {
+      "id": "M1",
+      "type": "multi",
+      "question": "华东一台 EM-300 智能电表，2023 年 5 月出厂，最近在低温天气下反复上报 E207。需要整表更换吗？费用谁承担？现场作业需要向计量院报备吗？",
+      "expected_docs": [
+        "01-产品型号与固件版本.md",
+        "02-错误码手册.md",
+        "03-保修政策.md",
+        "04-区域合规与报备要求.md"
+      ],
+      "expected_facts": [
+        ["4.2.1"],
+        ["固件"],
+        ["免费", "不收费", "不占用"],
+        ["不需要报备", "无需报备", "不需要事前报备", "无需事前报备"]
+      ]
+    },
+    {
+      "id": "M2",
+      "type": "multi",
+      "question": "一台 2023 年 3 月出厂的 EM-300，计量芯片彻底无响应报 E201。按政策现在还在保修期内吗？",
+      "expected_docs": ["02-错误码手册.md", "03-保修政策.md"],
+      "expected_facts": [
+        ["核心部件"],
+        ["5 年", "5年", "五年"],
+        ["2028"]
+      ]
+    },
+    {
+      "id": "M3",
+      "type": "multi",
+      "question": "现场一台电表信号强度是 -100 dBm，能直接发起 OTA 升级吗？需要先加装天线吗？",
+      "expected_docs": ["05-OTA升级操作规程.md", "02-错误码手册.md"],
+      "expected_facts": [
+        ["-95"],
+        ["-105"]
+      ]
+    },
+    {
+      "id": "M4",
+      "type": "multi",
+      "question": "西北区域计划给 8000 台 EM-300 批量升级固件，有哪些合规和流程上的限制？",
+      "expected_docs": ["04-区域合规与报备要求.md", "05-OTA升级操作规程.md"],
+      "expected_facts": [
+        ["5000"],
+        ["书面告知", "告知属地"],
+        ["1%", "灰度", "分三批"]
+      ]
+    },
+    {
+      "id": "M5",
+      "type": "multi",
+      "question": "EM-300 在环境温度 -15 摄氏度时反复上报 E207，这是计量芯片硬件损坏吗？",
+      "expected_docs": ["01-产品型号与固件版本.md", "02-错误码手册.md"],
+      "expected_facts": [
+        ["4.2.1"],
+        ["-10"],
+        ["固件"]
+      ]
+    },
+    {
+      "id": "O1",
+      "type": "out_of_scope",
+      "question": "AnyCompany EM-300 智能电表的采购单价是多少人民币？",
+      "expected_docs": [],
+      "expected_facts": []
+    },
+    {
+      "id": "O2",
+      "type": "out_of_scope",
+      "question": "如何申请成为 AnyCompany 在华中区域的授权代理商？",
+      "expected_docs": [],
+      "expected_facts": []
+    }
+  ]
+}
